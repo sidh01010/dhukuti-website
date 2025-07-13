@@ -125,7 +125,7 @@ function saveMonth() {
     day: currentDay
   });
 }
-}
+
 function addPerson() {
   const name = document.getElementById('personName').value.trim();
   if (name) {
@@ -157,7 +157,6 @@ function nextDay() {
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const newMonth = `${nextMonth.toLocaleString('default', { month: 'long' })} ${nextMonth.getFullYear()}`;
     alert(`30 days complete. Switching to ${newMonth}`);
-    localStorage.setItem(getStorageKey(), JSON.stringify({ people, collections, day: 30 }));
     currentMonth = newMonth;
     collections = [];
     currentDay = 1;
