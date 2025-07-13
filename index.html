@@ -71,6 +71,24 @@
       <table><thead id="dailyHeader"></thead><tbody id="dailyBreakdown"></tbody></table>
     </section>
   </div>
+<!-- Firebase App (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB4mzVRzheA0twbFb5MHVDNTqiTcJ8YRK",
+    authDomain: "dhukuti-2c450.firebaseapp.com",
+    databaseURL: "https://dhukuti-2c450-default-rtdb.firebaseio.com",
+    projectId: "dhukuti-2c450",
+    storageBucket: "dhukuti-2c450.appspot.com",
+    messagingSenderId: "68818201820",
+    appId: "1:68818201820:web:61b6c9c3985305968185819"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+</script>
 
 <script>
 let people = [], collections = [], currentDay = 1, currentMonth = "", currentGroup = "";
