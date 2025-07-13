@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dhukuti - Full Summary Tracker</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary: #0d9488;
+      --accent: #14b8a6;
+      --bg: #ecfdf5;
+      --text: #0f172a;
+    }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--bg); color: var(--text); }
+    header { background-color: var(--primary); color: white; padding: 1rem; text-align: center; }
+    .container { max-width: 1000px; margin: auto; padding: 1rem; background-color: white; border-radius: 8px; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    nav { text-align: center; margin-bottom: 1rem; }
+    nav button { margin: 0.5rem; padding: 0.6rem 1.2rem; border: none; background-color: var(--primary); color: white; border-radius: 5px; cursor: pointer; }
+    nav button:hover { background-color: var(--accent); }
+    .page { display: none; }
+    .active { display: block; }
+    input, select { width: 100%; padding: 0.5rem; margin: 0.3rem 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button.action { margin-top: 0.5rem; background-color: var(--accent); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 5px; cursor: pointer; }
+    button.action:hover { background-color: #0f766e; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 0.6rem; text-align: center; }
+    th { background-color: #f0fdfa; }
+    .group-box { margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <header><h1>Dhukuti - Summary Tracker (Multi-Group)</h1></header>
+  <div class="container">
+    <div class="group-box">
+      <label>Group Name:</label>
+      <input type="text" id="groupName" placeholder="e.g., Dhukuti A">
+      <label>Month:</label>
+      <input type="text" id="monthInput" placeholder="e.g., July 2025">
+      <button class="action" onclick="loadMonth()">Load</button>
+    </div>
+    <nav>
+      <button onclick="showPage('page1')">Add People</button>
+      <button onclick="showPage('page2')">Collect</button>
+      <button onclick="showPage('page3')">Summary</button>
+      <button onclick="exportToExcel()">Export</button>
+    </nav>
+
+    <section id="page1" class="page active">
+      <h2>Add Participants</h2>
+      <input type="text" id="personName" placeholder="Enter name">
+      <button class="action" onclick="addPerson()">Add</button>
+      <ul id="personList"></ul>
+    </section>
+
+    <section id="page2" class="page">
+      <h2>Day <span id="dayCount">1</span></h2>
+      <table><thead><tr><th>Name</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody id="collectionTable"></tbody></table>
+      <button class="action" onclick="nextDay()">Save & Next</button>
+    </section>
+
+    <section id="page3" class="page">
+      <h2>Monthly Summary</h2>
+      <table><thead><tr><th>Name</th><th>Total Paid</th><th>Days Paid</th></tr></thead>
+      <tbody id="summaryTable"></tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td id="grandTotal"></td><td></td></tr></tfoot>
+      </table>
+
+      <h2>Daily Breakdown</h2>
+      <table><thead id="dailyHeader"></thead><tbody id="dailyBreakdown"></tbody></table>
+    </section>
+  </div>
+
+<script>
+let people = [], collections = [], currentDay = 1, currentMonth = "", currentGroup = "";
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'page3') renderSummary();
+}
+function getStorageKey() {
+  return `dhukuti_${currentGroup}_${currentMonth}`;
+}
+function loadMonth() {
+  currentGroup = document.getElementById('groupName').value.trim();
+  currentMonth = document.getElementById('monthInput').value.trim();
+  if (!currentGroup || !currentMonth) return alert('Please enter both group and month.');
+  const key = getStorageKey();
+  const data = JSON.parse(localStorage.getItem(key)) || { people: [], collections: [], day: 1 };
+  people = data.people;
+  collections = data.collections;
+  currentDay = data.day;
+  renderPeople();
+  renderCollectionTable();
+  document.getElementById('dayCount').innerText = currentDay;
+}
+function saveMonth() {
+  const key = getStorageKey();
+  localStorage.setItem(key, JSON.stringify({ people, collections, day: currentDay }));
+}
+function addPerson() {
+  const name = document.getElementById('personName').value.trim();
+  if (name) {
+    people.push(name);
+    document.getElementById('personName').value = '';
+    renderPeople();
+    saveMonth();
+  }
+}
+function renderPeople() {
+  document.getElementById('personList').innerHTML = people.map(n => `<li>${n}</li>`).join('');
+}
+function renderCollectionTable() {
+  document.getElementById('collectionTable').innerHTML = people.map(n => `<tr><td>${n}</td><td><input type='number' id='amt-${n}'/></td><td><select id='status-${n}'><option>Paid</option><option>Unpaid</option></select></td></tr>`).join('');
+}
+function nextDay() {
+  const dayRecord = {};
+  people.forEach(n => {
+    dayRecord[n] = {
+      amount: parseInt(document.getElementById(`amt-${n}`).value || 0),
+      status: document.getElementById(`status-${n}`).value
+    };
+  });
+  collections.push(dayRecord);
+  currentDay++;
+  if (currentDay > 30) {
+    const [m, y] = currentMonth.split(" ");
+    const nextMonth = new Date(`${m} 1, ${y}`);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const newMonth = `${nextMonth.toLocaleString('default', { month: 'long' })} ${nextMonth.getFullYear()}`;
+    alert(`30 days complete. Switching to ${newMonth}`);
+    localStorage.setItem(getStorageKey(), JSON.stringify({ people, collections, day: 30 }));
+    currentMonth = newMonth;
+    collections = [];
+    currentDay = 1;
+    saveMonth();
+    renderPeople();
+    renderCollectionTable();
+    document.getElementById('monthInput').value = currentMonth;
+  }
+  saveMonth();
+  renderCollectionTable();
+  document.getElementById('dayCount').innerText = currentDay;
+}
+function renderSummary() {
+  const summary = {}, personTotals = {};
+  people.forEach(n => summary[n] = { total: 0, days: 0 });
+  collections.forEach(day => {
+    people.forEach(n => {
+      if (day[n] && day[n].status === 'Paid') {
+        summary[n].total += day[n].amount;
+        summary[n].days++;
+        personTotals[n] = (personTotals[n] || 0) + day[n].amount;
+      }
+    });
+  });
+  const tbody = document.getElementById('summaryTable');
+  tbody.innerHTML = people.map(n => `<tr><td>${n}</td><td>${summary[n].total}</td><td>${summary[n].days}</td></tr>`).join('');
+  document.getElementById('grandTotal').innerText = Object.values(personTotals).reduce((a, b) => a + b, 0);
+
+  const dailyHead = document.getElementById('dailyHeader');
+  dailyHead.innerHTML = `<tr><th>Day</th>${people.map(n => `<th>${n}</th>`).join('')}<th>Total</th></tr>`;
+  const dailyBody = document.getElementById('dailyBreakdown');
+  dailyBody.innerHTML = collections.map((day, i) => {
+    let row = `<td>${i + 1}</td>`, dayTotal = 0;
+    people.forEach(n => {
+      const val = day[n] && day[n].status === 'Paid' ? day[n].amount : '-';
+      if (day[n] && day[n].status === 'Paid') dayTotal += day[n].amount;
+      row += `<td>${val}</td>`;
+    });
+    return `<tr>${row}<td>${dayTotal}</td></tr>`;
+  }).join('');
+}
+function exportToExcel() {
+  const wb = XLSX.utils.book_new();
+  const summary = [["Name", "Total Paid", "Days Paid"]].concat(people.map(n => {
+    let total = 0, days = 0;
+    collections.forEach(day => { if (day[n] && day[n].status === 'Paid') { total += day[n].amount; days++; } });
+    return [n, total, days];
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+  const daily = [["Day", ...people, "Total"]];
+  collections.forEach((day, i) => {
+    const row = [i + 1], dayTotal = people.reduce((sum, n) => {
+      const amt = day[n] && day[n].status === 'Paid' ? day[n].amount : 0;
+      row.push(day[n] && day[n].status === 'Paid' ? amt : '');
+      return sum + amt;
+    }, 0);
+    row.push(dayTotal);
+    daily.push(row);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(daily), "Daily");
+  XLSX.writeFile(wb, `Dhukuti_${currentGroup}_${currentMonth}.xlsx`);
+}
+</script>
+</body>
+</html>
