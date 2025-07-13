@@ -104,18 +104,27 @@ function loadMonth() {
   currentGroup = document.getElementById('groupName').value.trim();
   currentMonth = document.getElementById('monthInput').value.trim();
   if (!currentGroup || !currentMonth) return alert('Please enter both group and month.');
+
   const key = getStorageKey();
-  const data = JSON.parse(localStorage.getItem(key)) || { people: [], collections: [], day: 1 };
-  people = data.people;
-  collections = data.collections;
-  currentDay = data.day;
-  renderPeople();
-  renderCollectionTable();
-  document.getElementById('dayCount').innerText = currentDay;
+  db.ref('groups/' + key).once('value').then(snapshot => {
+    const data = snapshot.val() || { people: [], collections: [], day: 1 };
+    people = data.people;
+    collections = data.collections;
+    currentDay = data.day;
+    renderPeople();
+    renderCollectionTable();
+    document.getElementById('dayCount').innerText = currentDay;
+  });
 }
+
 function saveMonth() {
   const key = getStorageKey();
-  localStorage.setItem(key, JSON.stringify({ people, collections, day: currentDay }));
+  db.ref('groups/' + key).set({
+    people,
+    collections,
+    day: currentDay
+  });
+}
 }
 function addPerson() {
   const name = document.getElementById('personName').value.trim();
